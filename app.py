@@ -118,109 +118,39 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Client-side JavaScript to actively find and destroy the badge by DOM walking
+# Client-side JS: inject hiding CSS into parent document (never remove nodes — breaks React)
 import streamlit.components.v1 as components
 components.html(
     """
     <script>
     (function() {
-        function nukeBySelectors(doc) {
-            const sels = [
-                'footer', '[data-testid="stFooter"]',
-                '[data-testid="stStatusWidget"]',
-                '[data-testid="manage-app-button"]',
-                'div[class*="viewerBadge"]', 'a[class*="viewerBadge"]',
-                'span[class*="viewerBadge"]', 'div[class*="manageApp"]',
-                'div[class*="StatusWidget"]', 'div[class*="ProfileBadge"]',
-                'div[class*="profileBadge"]', 'div[class*="stAppDeployButton"]',
-                'div[class*="DeployButton"]', 'div[class*="stBottom"]'
-            ];
-            sels.forEach(s => doc.querySelectorAll(s).forEach(el => el.remove()));
-        }
-
-        function nukeByStructure(doc) {
-            // Remove any body child that isn't #root, script, style, link
-            if (doc.body) {
-                Array.from(doc.body.children).forEach(child => {
-                    const tag = child.tagName.toLowerCase();
-                    if (child.id === 'root') return;
-                    if (['script','style','link','noscript','meta','iframe'].includes(tag)) return;
-                    // If it's a small fixed/absolute positioned element, it's likely the badge
-                    const cs = doc.defaultView ? doc.defaultView.getComputedStyle(child) : null;
-                    if (cs && (cs.position === 'fixed' || cs.position === 'absolute')) {
-                        child.remove();
-                        return;
-                    }
-                    // If it contains an img with border-radius (avatar circle), remove it
-                    const imgs = child.querySelectorAll('img');
-                    if (imgs.length > 0 && child.offsetHeight < 80 && child.offsetWidth < 80) {
-                        child.remove();
-                        return;
-                    }
-                });
-            }
-
-            // Also check inside #root for siblings of .stApp
-            const root = doc.getElementById('root');
-            if (root) {
-                Array.from(root.children).forEach(child => {
-                    if (child.classList && child.classList.contains('stApp')) return;
-                    const tag = child.tagName.toLowerCase();
-                    if (['script','style','link','noscript'].includes(tag)) return;
-                    // Anything else outside .stApp is likely injected badge
-                    const cs = doc.defaultView ? doc.defaultView.getComputedStyle(child) : null;
-                    if (cs && (cs.position === 'fixed' || cs.position === 'absolute')) {
-                        child.remove();
-                    }
-                });
-            }
-        }
-
         function injectCSS(doc) {
-            if (doc.getElementById('__nuke_badge')) return;
+            if (doc.getElementById('__hide_st_badge')) return;
             const s = doc.createElement('style');
-            s.id = '__nuke_badge';
+            s.id = '__hide_st_badge';
             s.textContent = `
-                body > :not(#root):not(script):not(style):not(link):not(noscript):not(meta) {
-                    display: none !important;
-                    visibility: hidden !important;
-                }
                 footer, [data-testid="stFooter"],
-                div[class*="viewerBadge"], div[class*="manageApp"],
+                [data-testid="stStatusWidget"],
+                [data-testid="manage-app-button"],
+                div[class*="viewerBadge"], a[class*="viewerBadge"],
+                span[class*="viewerBadge"], div[class*="manageApp"],
                 div[class*="StatusWidget"], div[class*="ProfileBadge"],
                 div[class*="profileBadge"], div[class*="stAppDeployButton"],
                 div[class*="DeployButton"], div[class*="stBottom"],
-                [data-testid="manage-app-button"] {
+                body > :not(#root):not(script):not(style):not(link):not(noscript):not(meta) {
                     display: none !important;
                     visibility: hidden !important;
-                    height: 0 !important; width: 0 !important;
+                    height: 0 !important;
+                    width: 0 !important;
+                    overflow: hidden !important;
                 }
             `;
             (doc.head || doc.documentElement).appendChild(s);
         }
 
-        function fullPurge(doc) {
-            injectCSS(doc);
-            nukeBySelectors(doc);
-            nukeByStructure(doc);
-        }
-
-        function setup(doc) {
-            fullPurge(doc);
-            const obs = new MutationObserver(() => fullPurge(doc));
-            obs.observe(doc.body || doc.documentElement, { childList: true, subtree: true });
-        }
-
-        // Run on all reachable document levels
-        try { setup(document); } catch(e) {}
-        try {
-            const pd = window.parent.document;
-            if (pd && pd !== document) setup(pd);
-        } catch(e) {}
-        try {
-            const td = window.top.document;
-            if (td && td !== document && td !== window.parent.document) setup(td);
-        } catch(e) {}
+        try { injectCSS(document); } catch(e) {}
+        try { if (window.parent && window.parent.document !== document) injectCSS(window.parent.document); } catch(e) {}
+        try { if (window.top && window.top.document !== document) injectCSS(window.top.document); } catch(e) {}
     })();
     </script>
     """,
