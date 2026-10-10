@@ -64,20 +64,35 @@ st.set_page_config(
     layout="wide",
 )
 
-# Hide Streamlit Cloud top toolbar (GitHub icon, Share, Edit button)
+# Hide Streamlit Cloud header toolbar and bottom GitHub avatar footer badge
 st.markdown(
     """
     <style>
+    /* Hide top header toolbar */
     header [data-testid="stHeaderActionElements"],
     [data-testid="stToolbarActions"],
-    .viewerBadge_container__1QSob,
     [data-testid="stDecoration"] {
         display: none !important;
+    }
+
+    /* Hide bottom footer: 'Created by [avatar] Hosted with Streamlit' */
+    footer {
+        display: none !important;
+        visibility: hidden !important;
+    }
+    div[class*="viewerBadge"],
+    a[class*="viewerBadge"],
+    .viewerBadge_container__1QSob,
+    .viewerBadge_link__1S137,
+    [data-testid="manage-app-button"] {
+        display: none !important;
+        visibility: hidden !important;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
+
 
 st.title("YouTube Video Summarizer & Notes Extractor")
 
