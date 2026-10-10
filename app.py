@@ -116,60 +116,13 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Client-side JavaScript to aggressively remove Streamlit Cloud viewer badge
+# Client-side JavaScript to actively purge viewer badge from parent DOM
 import streamlit.components.v1 as components
 components.html(
     """
     <script>
     (function() {
-        // List of documents to purge from (iframe -> parent -> top)
-        function getDocs() {
-            var docs = [document];
-            try { if (window.parent && window.parent.document !== document) docs.push(window.parent.document); } catch(e) {}
-            try { if (window.top && window.top.document !== document && window.top.document !== window.parent.document) docs.push(window.top.document); } catch(e) {}
-            return docs;
-        }
-
-        // Inject a <style> tag into a document to hide badges via CSS
-        function injectHideCSS(doc) {
-            if (doc._badgeCSSInjected) return;
-            try {
-                var style = doc.createElement('style');
-                style.textContent = [
-                    'footer, [data-testid="stFooter"],',
-                    '[data-testid="stStatusWidget"],',
-                    '[data-testid="manage-app-button"],',
-                    'div[class*="viewerBadge"],',
-                    'a[class*="viewerBadge"],',
-                    'span[class*="viewerBadge"],',
-                    'button[class*="viewerBadge"],',
-                    '.viewerBadge_container__1QSob,',
-                    '.viewerBadge_link__1S137,',
-                    'div[class*="manageApp"],',
-                    'div[class*="StatusWidget"],',
-                    'div[class*="ProfileBadge"],',
-                    'div[class*="profileBadge"],',
-                    'div[class*="stAppViewBlockContainer"] > div:last-child > div[class*="Badge"],',
-                    'div[class*="hostBadge"],',
-                    'div[class*="HostBadge"] {',
-                    '  display: none !important;',
-                    '  visibility: hidden !important;',
-                    '  opacity: 0 !important;',
-                    '  pointer-events: none !important;',
-                    '  height: 0 !important;',
-                    '  width: 0 !important;',
-                    '  overflow: hidden !important;',
-                    '  position: absolute !important;',
-                    '  clip: rect(0,0,0,0) !important;',
-                    '}'
-                ].join('\\n');
-                (doc.head || doc.documentElement).appendChild(style);
-                doc._badgeCSSInjected = true;
-            } catch(e) {}
-        }
-
-        // Selector-based removal
-        var SELECTORS = [
+        const SELECTORS = [
             'footer',
             '[data-testid="stFooter"]',
             '[data-testid="stStatusWidget"]',
@@ -184,78 +137,57 @@ components.html(
             'div[class*="StatusWidget"]',
             'div[class*="ProfileBadge"]',
             'div[class*="profileBadge"]',
-            'div[class*="hostBadge"]',
-            'div[class*="HostBadge"]'
+            'div[class*="stAppDeployButton"]',
+            '[data-testid="stAppDeployButton"]',
+            'div[class*="stDeployButton"]'
         ];
 
-        function removeBySelectors(doc) {
-            SELECTORS.forEach(function(sel) {
-                try {
-                    doc.querySelectorAll(sel).forEach(function(el) { el.remove(); });
-                } catch(e) {}
+        function nuke(doc) {
+            SELECTORS.forEach(sel => {
+                doc.querySelectorAll(sel).forEach(el => el.remove());
             });
         }
 
-        // Position-based removal: find any small fixed/absolute element
-        // anchored to the bottom-right corner (the circular avatar pill)
-        function removeByPosition(doc) {
-            try {
-                var allEls = doc.querySelectorAll('div, a, button, span');
-                allEls.forEach(function(el) {
-                    var cs = window.getComputedStyle(el);
-                    // Check if the element is fixed/absolute, near bottom-right,
-                    // and is small (badge-sized: < 80px)
-                    if ((cs.position === 'fixed' || cs.position === 'absolute') &&
-                        el.offsetWidth > 0 && el.offsetWidth < 80 &&
-                        el.offsetHeight > 0 && el.offsetHeight < 80) {
-                        var rect = el.getBoundingClientRect();
-                        var winW = doc.documentElement.clientWidth || window.innerWidth;
-                        var winH = doc.documentElement.clientHeight || window.innerHeight;
-                        // Bottom-right quadrant: within 80px of bottom and 80px of right
-                        if (rect.bottom > winH - 80 && rect.right > winW - 80) {
-                            // Check it contains an image (avatar) or has border-radius (circular)
-                            var hasImg = el.querySelector('img') !== null;
-                            var isRound = parseFloat(cs.borderRadius) > 10 ||
-                                          cs.borderRadius.indexOf('%') !== -1;
-                            var hasAvatar = el.innerHTML && el.innerHTML.indexOf('avatar') !== -1;
-                            if (hasImg || isRound || hasAvatar ||
-                                el.className.indexOf('badge') !== -1 ||
-                                el.className.indexOf('Badge') !== -1) {
-                                el.remove();
-                            }
-                        }
-                    }
-                });
-            } catch(e) {}
+        function injectHideCSS(doc) {
+            if (doc.getElementById('__hide_badge_css')) return;
+            const style = doc.createElement('style');
+            style.id = '__hide_badge_css';
+            style.textContent = `
+                footer, [data-testid="stFooter"],
+                [data-testid="stStatusWidget"],
+                [data-testid="manage-app-button"],
+                div[class*="viewerBadge"], a[class*="viewerBadge"],
+                span[class*="viewerBadge"], button[class*="viewerBadge"],
+                div[class*="manageApp"], div[class*="StatusWidget"],
+                div[class*="ProfileBadge"], div[class*="profileBadge"],
+                div[class*="stAppDeployButton"], [data-testid="stAppDeployButton"],
+                div[class*="stDeployButton"] {
+                    display: none !important;
+                    visibility: hidden !important;
+                    height: 0 !important;
+                    width: 0 !important;
+                    overflow: hidden !important;
+                    position: absolute !important;
+                    left: -9999px !important;
+                }
+            `;
+            doc.head.appendChild(style);
         }
 
-        function purgeAll() {
-            getDocs().forEach(function(doc) {
-                injectHideCSS(doc);
-                removeBySelectors(doc);
-                removeByPosition(doc);
-            });
-        }
-
-        // MutationObserver to catch dynamically injected badges
         function observe(doc) {
-            try {
-                var observer = new MutationObserver(function() { purgeAll(); });
-                observer.observe(doc.body || doc.documentElement, {
-                    childList: true, subtree: true
-                });
-            } catch(e) {}
+            injectHideCSS(doc);
+            nuke(doc);
+            const observer = new MutationObserver(() => nuke(doc));
+            observer.observe(doc.body || doc.documentElement, {
+                childList: true,
+                subtree: true
+            });
         }
 
-        // Initial run + repeated runs + observers
-        purgeAll();
-        getDocs().forEach(function(doc) { observe(doc); });
-        var iv = setInterval(purgeAll, 500);
-        // Keep running for 30 seconds then slow down to every 3 seconds
-        setTimeout(function() {
-            clearInterval(iv);
-            setInterval(purgeAll, 3000);
-        }, 30000);
+        // Target all reachable documents
+        try { observe(document); } catch(e) {}
+        try { if (window.parent && window.parent.document !== document) observe(window.parent.document); } catch(e) {}
+        try { if (window.top && window.top.document !== document && window.top.document !== window.parent.document) observe(window.top.document); } catch(e) {}
     })();
     </script>
     """,
