@@ -64,98 +64,21 @@ st.set_page_config(
     layout="wide",
 )
 
-# Hide Streamlit Cloud header toolbar and bottom GitHub avatar footer badge
+# Clean interface styling
 st.markdown(
     """
     <style>
-    /* 1. Hide top header toolbar and decoration */
+    /* Clean up standard footer and decoration */
     header [data-testid="stHeaderActionElements"],
-    header [data-testid="stToolbar"],
     [data-testid="stToolbarActions"],
     [data-testid="stDecoration"],
-    [data-testid="stStatusWidget"] {
+    footer {
         display: none !important;
         visibility: hidden !important;
-        height: 0 !important;
-        width: 0 !important;
-        opacity: 0 !important;
-    }
-
-    /* 2. Hide footer and all known badge selectors */
-    footer,
-    [data-testid="stFooter"],
-    [data-testid="manage-app-button"],
-    div[class*="viewerBadge"],
-    a[class*="viewerBadge"],
-    span[class*="viewerBadge"],
-    div[class*="manageApp"],
-    div[class*="StatusWidget"],
-    div[class*="stAppDeployButton"],
-    div[class*="DeployButton"],
-    div[class*="stBottom"],
-    div[class*="ProfileBadge"],
-    div[class*="profileBadge"] {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-        height: 0 !important;
-        width: 0 !important;
-    }
-
-    /* 3. Nuclear: hide any direct child of body that is NOT #root */
-    body > :not(#root):not(script):not(style):not(link):not(noscript):not(meta) {
-        display: none !important;
-        visibility: hidden !important;
-    }
-
-    /* 4. Hide any floating fixed/absolute pill at bottom-right corners */
-    div[style*="position: fixed"][style*="bottom"],
-    div[style*="position: fixed"][style*="right"] {
-        display: none !important;
     }
     </style>
     """,
     unsafe_allow_html=True,
-)
-
-# Client-side JS: inject hiding CSS into parent document (never remove nodes — breaks React)
-import streamlit.components.v1 as components
-components.html(
-    """
-    <script>
-    (function() {
-        function injectCSS(doc) {
-            if (doc.getElementById('__hide_st_badge')) return;
-            const s = doc.createElement('style');
-            s.id = '__hide_st_badge';
-            s.textContent = `
-                footer, [data-testid="stFooter"],
-                [data-testid="stStatusWidget"],
-                [data-testid="manage-app-button"],
-                div[class*="viewerBadge"], a[class*="viewerBadge"],
-                span[class*="viewerBadge"], div[class*="manageApp"],
-                div[class*="StatusWidget"], div[class*="ProfileBadge"],
-                div[class*="profileBadge"], div[class*="stAppDeployButton"],
-                div[class*="DeployButton"], div[class*="stBottom"],
-                body > :not(#root):not(script):not(style):not(link):not(noscript):not(meta) {
-                    display: none !important;
-                    visibility: hidden !important;
-                    height: 0 !important;
-                    width: 0 !important;
-                    overflow: hidden !important;
-                }
-            `;
-            (doc.head || doc.documentElement).appendChild(s);
-        }
-
-        try { injectCSS(document); } catch(e) {}
-        try { if (window.parent && window.parent.document !== document) injectCSS(window.parent.document); } catch(e) {}
-        try { if (window.top && window.top.document !== document) injectCSS(window.top.document); } catch(e) {}
-    })();
-    </script>
-    """,
-    height=0,
-    width=0,
 )
 
 
