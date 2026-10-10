@@ -1,0 +1,25 @@
+You are synthesizing section summaries from a complete video into unified, structured reference notes.
+
+Section Summaries:
+"""
+{combined_summaries}
+"""
+
+Instructions:
+1. Synthesize all section summaries into cohesive, structured technical notes.
+2. Eliminate redundancies and repetitions across sections while preserving all unique technical insights, equations, and terminology.
+3. Strictly maintain grounding. Do not invent details not present in the summaries.
+4. Structure your response using EXACTLY the following three top-level Markdown headers:
+
+# Executive Summary
+Provide a unified, high-density overview of the entire video (1 to 3 paragraphs).
+
+# Key Concepts
+Synthesize all foundational concepts, definitions, architectures, mechanisms, and formulas across the entire talk. Use bullet points with bold sub-headers.
+
+# Action Items
+Consolidate all concrete recommendations, practical steps, or implementation instructions explicitly mentioned.
+
+Important:
+If no actionable tasks or practical instructions are identified, output exactly:
+"No explicit action items were identified in the transcript."

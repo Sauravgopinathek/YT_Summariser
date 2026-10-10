@@ -1,0 +1,12 @@
+You are processing Section {chunk_id} of {total_chunks} of an educational/technical video transcript.
+
+Section Transcript:
+"""
+{chunk_text}
+"""
+
+Instructions:
+1. Extract the core facts, technical details, definitions, formulas, and actionable items present in this section.
+2. Maintain strict grounding on this section's text. Do not hallucinate or extrapolate.
+3. Preserve all technical terms, code elements, equations, and exact numerical figures.
+4. Keep the summary dense, scannable, and factual.

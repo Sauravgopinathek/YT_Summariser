@@ -1,0 +1,23 @@
+Analyze the following video transcript and produce structured technical notes strictly grounded in the provided content.
+
+Transcript:
+"""
+{transcript}
+"""
+
+Instructions:
+1. Base your output strictly on the transcript text above. Do not introduce outside facts or invent unmentioned information.
+2. Structure your response using EXACTLY the following three top-level Markdown headers:
+
+# Executive Summary
+Provide a concise, high-density overview of the entire video. Synthesize the central premise, key themes, and major conclusions in 1 to 3 focused paragraphs.
+
+# Key Concepts
+Detail the foundational concepts, definitions, mechanisms, architectural workflows, formulas, algorithms, and technical terminology explained in the transcript. Group related points logically using bullet points with bold sub-headers for readability.
+
+# Action Items
+List practical steps, actionable recommendations, implementation instructions, exercises, configurations, or best practices explicitly stated or directly instructed in the transcript.
+
+Important:
+If the transcript does not contain actionable tasks or practical instructions, output exactly:
+"No explicit action items were identified in the transcript."

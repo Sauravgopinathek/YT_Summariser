@@ -1,0 +1,1 @@
+video_id,youtube_url,domain,approx_duration,status,transcript_words,summary_words,compression_ratio,chunk_count,llm_calls,total_latency_seconds,retrieval_latency,preprocessing_latency,chunking_latency,llm_latency,rouge1_f1,rouge2_f1,rougel_f1,error,notes
