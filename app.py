@@ -64,7 +64,23 @@ st.set_page_config(
     layout="wide",
 )
 
+# Hide Streamlit Cloud top toolbar (GitHub icon, Share, Edit button)
+st.markdown(
+    """
+    <style>
+    header [data-testid="stHeaderActionElements"],
+    [data-testid="stToolbarActions"],
+    .viewerBadge_container__1QSob,
+    [data-testid="stDecoration"] {
+        display: none !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 st.title("YouTube Video Summarizer & Notes Extractor")
+
 st.markdown("**Zero-download GenAI summarization of YouTube educational content.**")
 
 st.markdown("---")
