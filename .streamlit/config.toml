@@ -1,6 +1,9 @@
 [client]
+showSidebarNavigation = false
 toolbarMode = "minimal"
-showErrorDetails = false
+
+[server]
+runOnSave = true
 
 [ui]
 hideTopBar = true
