@@ -1,8 +1,13 @@
 # YouTube Video Summarizer & Notes Extractor
 
-> **Zero-download Generative AI summarization of YouTube educational content using NVIDIA NIM (`meta/llama-3.1-70b-instruct`) and Streamlit.**
+> **Zero-download Generative AI summarization of YouTube educational content using NVIDIA NIM and Streamlit.**
+
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://ytsummariser-9atsgnfyr9hnfy9je9swih.streamlit.app/)
+
+🌐 **Live Deployed App:** [https://ytsummariser-9atsgnfyr9hnfy9je9swih.streamlit.app/](https://ytsummariser-9atsgnfyr9hnfy9je9swih.streamlit.app/)
 
 ---
+
 
 ## 🌟 Architectural Overview
 
