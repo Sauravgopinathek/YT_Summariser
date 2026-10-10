@@ -1,9 +1,12 @@
 [client]
-showSidebarNavigation = false
 toolbarMode = "minimal"
+showSidebarNavigation = false
+
+[browser]
+gatherUsageStats = false
 
 [server]
-runOnSave = true
+enableStaticServing = false
 
-[ui]
-hideTopBar = true
+[theme]
+base = "dark"
