@@ -27,6 +27,15 @@ PAGE_ICON = "🎬"
 
 
 def get_nvidia_api_key() -> str:
-    """Retrieve the latest NVIDIA API key from environment, re-reading .env if needed."""
+    """Retrieve the latest NVIDIA API key from environment or Streamlit secrets."""
     load_dotenv(override=True)
-    return os.getenv("NVIDIA_API_KEY", "").strip()
+    key = os.getenv("NVIDIA_API_KEY", "").strip()
+    if not key:
+        try:
+            import streamlit as st
+            if "NVIDIA_API_KEY" in st.secrets:
+                return str(st.secrets["NVIDIA_API_KEY"]).strip()
+        except Exception:
+            pass
+    return key
+
