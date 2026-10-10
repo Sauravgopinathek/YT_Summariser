@@ -68,29 +68,112 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* Hide top header toolbar */
+    /* 1. Hide top header toolbar and decoration */
     header [data-testid="stHeaderActionElements"],
+    header [data-testid="stToolbar"],
     [data-testid="stToolbarActions"],
-    [data-testid="stDecoration"] {
-        display: none !important;
-    }
-
-    /* Hide bottom footer: 'Created by [avatar] Hosted with Streamlit' */
-    footer {
+    [data-testid="stDecoration"],
+    [data-testid="stStatusWidget"] {
         display: none !important;
         visibility: hidden !important;
+        height: 0 !important;
+        width: 0 !important;
+        opacity: 0 !important;
     }
+
+    /* 2. Hide bottom footer and developer profile avatar badge */
+    footer,
+    [data-testid="stFooter"],
     div[class*="viewerBadge"],
     a[class*="viewerBadge"],
+    span[class*="viewerBadge"],
+    button[class*="viewerBadge"],
     .viewerBadge_container__1QSob,
     .viewerBadge_link__1S137,
-    [data-testid="manage-app-button"] {
+    [data-testid="manage-app-button"],
+    div[class*="manageApp"],
+    div[class*="StatusWidget"],
+    div[class*="ProfileBadge"],
+    div[class*="profileBadge"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        height: 0 !important;
+        width: 0 !important;
+    }
+
+    /* 3. Hide any fixed/floating bottom-right viewer pills */
+    div[style*="bottom: 0"][style*="right: 0"],
+    div[style*="bottom: 0px"][style*="right: 0px"],
+    div[style*="bottom: 12px"][style*="right: 12px"],
+    div[style*="bottom: 16px"][style*="right: 16px"] {
         display: none !important;
         visibility: hidden !important;
     }
     </style>
     """,
     unsafe_allow_html=True,
+)
+
+# Client-side JavaScript to actively purge viewer badge and avatar elements from parent DOM
+import streamlit.components.v1 as components
+components.html(
+    """
+    <script>
+    function purgeViewerBadges() {
+        try {
+            const targets = [
+                'footer',
+                '[data-testid="stFooter"]',
+                '[data-testid="stStatusWidget"]',
+                '[data-testid="manage-app-button"]',
+                'div[class*="viewerBadge"]',
+                'a[class*="viewerBadge"]',
+                'span[class*="viewerBadge"]',
+                'button[class*="viewerBadge"]',
+                '.viewerBadge_container__1QSob',
+                '.viewerBadge_link__1S137',
+                'div[class*="manageApp"]',
+                'div[class*="ProfileBadge"]',
+                'div[class*="profileBadge"]'
+            ];
+
+            const docs = [document];
+            try {
+                if (window.parent && window.parent.document) {
+                    docs.push(window.parent.document);
+                }
+            } catch(e) {}
+            try {
+                if (window.top && window.top.document) {
+                    docs.push(window.top.document);
+                }
+            } catch(e) {}
+
+            docs.forEach(doc => {
+                targets.forEach(sel => {
+                    const elements = doc.querySelectorAll(sel);
+                    elements.forEach(el => {
+                        el.style.setProperty('display', 'none', 'important');
+                        el.style.setProperty('visibility', 'hidden', 'important');
+                        el.remove();
+                    });
+                });
+            });
+        } catch (err) {
+            // Silently ignore cross-origin restrictions if sandboxed
+        }
+    }
+
+    // Run immediately and periodically
+    purgeViewerBadges();
+    const interval = setInterval(purgeViewerBadges, 300);
+    setTimeout(() => clearInterval(interval), 15000);
+    </script>
+    """,
+    height=0,
+    width=0,
 )
 
 
