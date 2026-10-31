@@ -78,11 +78,20 @@ class TranscriptProvider(ABC):
 # ---------------------------------------------------------------------------
 
 def _get_api_client():
-    """Return a callable YouTubeTranscriptApi instance or class for API backwards-compatibility."""
+    """Return a callable YouTubeTranscriptApi instance with optional proxy support."""
+    import os
+    proxy = os.getenv("YOUTUBE_PROXY", "").strip()
     try:
+        if proxy:
+            from youtube_transcript_api.proxies import GenericProxyConfig
+            return YouTubeTranscriptApi(proxy_config=GenericProxyConfig(http_url=proxy, https_url=proxy))
         return YouTubeTranscriptApi()
-    except TypeError:
-        return YouTubeTranscriptApi
+    except Exception:
+        try:
+            return YouTubeTranscriptApi()
+        except TypeError:
+            return YouTubeTranscriptApi
+
 
 
 def _list_transcripts(client, video_id: str):
