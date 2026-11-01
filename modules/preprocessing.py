@@ -121,27 +121,3 @@ def clean_transcript(segments: List[Dict[str, Any]]) -> Dict[str, Any]:
     stitched_text = WHITESPACE_PATTERN.sub(" ", stitched_text).strip()
 
     return get_transcript_statistics(stitched_text, segment_count=len(segments))
-
-
-def process_raw_text_transcript(raw_text: str) -> Dict[str, Any]:
-    """Process pasted transcript or article text, stripping timestamps and formatting.
-
-    Args:
-        raw_text: Pasted string from YouTube's 'Show transcript' or user lecture notes.
-
-    Returns:
-        Clean transcript statistics dictionary.
-    """
-    if not raw_text or not isinstance(raw_text, str):
-        return get_transcript_statistics("", segment_count=0)
-
-    # Clean YouTube timestamps (e.g. '0:00', '12:34', '1:02:45') from line beginnings
-    lines = raw_text.splitlines()
-    segments = []
-    for line in lines:
-        cleaned_line = re.sub(r"^\s*\d{1,2}:\d{2}(?::\d{2})?\s*", "", line)
-        if cleaned_line.strip():
-            segments.append({"text": cleaned_line.strip()})
-
-    return clean_transcript(segments)
-

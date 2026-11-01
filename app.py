@@ -6,7 +6,6 @@ production-grade error handling, secret sanitization, context management,
 and automated grounding/faithfulness validation.
 """
 
-import re
 import streamlit as st
 
 from config.settings import (
@@ -29,7 +28,7 @@ from modules.formatter import (
 )
 
 from modules.llm import NVIDIAClient
-from modules.preprocessing import clean_transcript, process_raw_text_transcript
+from modules.preprocessing import clean_transcript
 from modules.summarizer import generate_notes
 from modules.transcript import YouTubeTranscriptProvider
 from modules.url_parser import extract_video_id
@@ -65,23 +64,20 @@ st.set_page_config(
     layout="wide",
 )
 
-# Clean interface styling
+# Hide Streamlit Cloud top toolbar (GitHub icon, Share, Edit button)
 st.markdown(
     """
     <style>
-    /* Clean up standard footer and decoration */
     header [data-testid="stHeaderActionElements"],
     [data-testid="stToolbarActions"],
-    [data-testid="stDecoration"],
-    footer {
+    .viewerBadge_container__1QSob,
+    [data-testid="stDecoration"] {
         display: none !important;
-        visibility: hidden !important;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
-
 
 st.title("YouTube Video Summarizer & Notes Extractor")
 
@@ -141,126 +137,71 @@ with st.sidebar:
         help="Executes an additional audit pass with the LLM to verify factual claims. Increases token usage.",
     )
 
-# Input Section with Dual Modes (URL Auto-Fetch or Direct Paste)
-tab_url, tab_paste = st.tabs(["🔗 YouTube Video URL", "📝 Paste Transcript / Text (Bypasses Cloud IP Limits)"])
+# Input Section
+st.subheader("Enter YouTube Video URL")
 
-with tab_url:
-    st.subheader("Summarize from YouTube Video")
-    youtube_url = st.text_input(
-        "YouTube Video URL:",
-        placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        help="Supports standard, shortened (youtu.be), embed, shorts, and timestamped URLs.",
-        key="input_youtube_url",
-    )
-    generate_url_clicked = st.button("Generate Notes from URL", type="primary", key="btn_url")
+youtube_url = st.text_input(
+    "YouTube Video URL:",
+    placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    help="Supports standard, shortened (youtu.be), embed, shorts, and timestamped URLs.",
+)
 
-with tab_paste:
-    st.subheader("Direct Transcript / Notes Input")
-    st.caption("Copy closed captions directly from YouTube (`... More` > `Show transcript`) or paste any lecture text here.")
-    pasted_title = st.text_input("Title / Topic:", value="YouTube Lecture Notes", key="input_pasted_title")
-    pasted_text = st.text_area(
-        "Transcript Content:",
-        placeholder="Paste full transcript with or without timestamps here...",
-        height=180,
-        key="input_pasted_text",
-    )
-    generate_paste_clicked = st.button("Generate Notes from Pasted Text", type="primary", key="btn_paste")
+generate_clicked = st.button("Generate Notes", type="primary")
 
-if generate_url_clicked or generate_paste_clicked:
-    raw_segments = []
-    clean_text = ""
-    processed = {}
-    video_id = ""
+if generate_clicked:
+    if not youtube_url or not youtube_url.strip():
+        st.warning("Please enter a valid YouTube video URL.")
+        st.stop()
 
     # Progress Stages Container
     with st.status("Executing summarization pipeline...", expanded=True) as status:
-        if generate_url_clicked:
-            if not youtube_url or not youtube_url.strip():
-                st.warning("Please enter a valid YouTube video URL.")
+        # Stage 1: URL Validation & Video ID Extraction
+        try:
+            video_id = extract_video_id(youtube_url)
+            st.write("✓ URL validated")
+            st.write("✓ Video ID extracted")
+        except Exception as err:
+            err_title, err_desc = format_user_error(err)
+            status.update(label=err_title, state="error", expanded=True)
+            st.error(f"**{err_title}**: {err_desc}")
+            st.stop()
+
+        # Stage 2: Zero-Download Transcript Retrieval via YouTubeTranscriptProvider
+        try:
+            raw_segments = fetch_cached_transcript(video_id)
+            st.write("✓ Transcript retrieved")
+        except (EnglishTranscriptNotFoundError, CaptionsDisabledError):
+            status.update(label="Captions unavailable", state="error", expanded=True)
+            st.error("English captions are unavailable for this video.")
+            st.info(
+                "💡 **Architectural Note (Whisper Extension):**\n\n"
+                "In strict compliance with our zero-download architecture, this application does not download "
+                "YouTube video or audio streams. For videos lacking native subtitles, the `WhisperFallbackProvider` "
+                "architecture supports transcribing explicitly supplied local audio recordings."
+            )
+            st.stop()
+        except Exception as err:
+            err_title, err_desc = format_user_error(err)
+            status.update(label=err_title, state="error", expanded=True)
+            st.error(f"**{err_title}**: {err_desc}")
+            st.stop()
+
+        # Stage 3: Transcript Preprocessing
+        try:
+            processed = clean_transcript(raw_segments)
+            clean_text = processed["clean_text"]
+            if not clean_text:
+                status.update(label="Empty transcript", state="error", expanded=True)
+                st.error("Transcript cleaning yielded no textual content.")
                 st.stop()
 
-            # Stage 1: URL Validation & Video ID Extraction
-            try:
-                video_id = extract_video_id(youtube_url)
-                st.write("✓ URL validated")
-                st.write("✓ Video ID extracted")
-            except Exception as err:
-                err_title, err_desc = format_user_error(err)
-                status.update(label=err_title, state="error", expanded=True)
-                st.error(f"**{err_title}**: {err_desc}")
-                st.stop()
-
-            # Stage 2: Zero-Download Transcript Retrieval via YouTubeTranscriptProvider
-            try:
-                raw_segments = fetch_cached_transcript(video_id)
-                st.write("✓ Transcript retrieved")
-            except (EnglishTranscriptNotFoundError, CaptionsDisabledError):
-                status.update(label="Captions unavailable", state="error", expanded=True)
-                st.error("English captions are unavailable for this video.")
-                st.info(
-                    "💡 **Tip:** You can open this video on YouTube, click **`... More` > `Show transcript`**, "
-                    "copy the text, and paste it into the **'📝 Paste Transcript / Text'** tab above!"
-                )
-                st.stop()
-            except Exception as err:
-                err_title, err_desc = format_user_error(err)
-                status.update(label=err_title, state="error", expanded=True)
-                st.error(f"**{err_title}**: {err_desc}")
-                err_str = str(err).lower()
-                if "blocking requests from your ip" in err_str or "cloud provider" in err_str:
-                    st.warning(
-                        "🛡️ **Cloud Server IP Restriction Detected**\n\n"
-                        "YouTube is currently restricting Render's cloud datacenter IP from auto-scraping closed captions.\n\n"
-                        "**Quick 5-Second Solution:**\n"
-                        "1. On the YouTube video page, click **`... More` > `Show transcript`**.\n"
-                        "2. Copy the transcript text.\n"
-                        "3. Switch to the **'📝 Paste Transcript / Text'** tab right above and click **Generate Notes from Pasted Text**!"
-                    )
-                st.stop()
-
-            # Stage 3: Transcript Preprocessing
-            try:
-                processed = clean_transcript(raw_segments)
-                clean_text = processed["clean_text"]
-                if not clean_text:
-                    status.update(label="Empty transcript", state="error", expanded=True)
-                    st.error("Transcript cleaning yielded no textual content.")
-                    st.stop()
-
-                st.write("✓ Transcript cleaned")
-                st.write("✓ Transcript prepared")
-            except Exception as err:
-                err_title, err_desc = format_user_error(err)
-                status.update(label=err_title, state="error", expanded=True)
-                st.error(f"**{err_title}**: {err_desc}")
-                st.stop()
-
-        elif generate_paste_clicked:
-            if not pasted_text or not pasted_text.strip():
-                st.warning("Please paste some transcript or lecture text first.")
-                st.stop()
-
-            video_id = re.sub(r'[^a-zA-Z0-9_-]', '_', pasted_title.strip())[:25] or "study_notes"
-            youtube_url = "Direct Transcript Input"
-            st.write("✓ Direct text input accepted")
-
-            # Stage 3: Direct Text Preprocessing & Cleaning
-            try:
-                processed = process_raw_text_transcript(pasted_text)
-                clean_text = processed["clean_text"]
-                if not clean_text:
-                    status.update(label="Empty text", state="error", expanded=True)
-                    st.error("Text cleaning yielded no valid words.")
-                    st.stop()
-
-                raw_segments = [{"text": s, "start": 0.0, "duration": 0.0} for s in clean_text.split(". ") if s]
-                st.write("✓ Transcript cleaned and timestamps parsed")
-                st.write(f"✓ Total words: {processed['word_count']:,}")
-            except Exception as err:
-                err_title, err_desc = format_user_error(err)
-                status.update(label=err_title, state="error", expanded=True)
-                st.error(f"**{err_title}**: {err_desc}")
-                st.stop()
+            st.write("✓ Transcript cleaned")
+            st.write("✓ Transcript prepared")
+        except Exception as err:
+            err_title, err_desc = format_user_error(err)
+            status.update(label=err_title, state="error", expanded=True)
+            st.error(f"**{err_title}**: {err_desc}")
+            st.stop()
 
         # Stage 4: AI Summarization via NVIDIA NIM
         st.write("✓ AI summarization in progress")
